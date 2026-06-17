@@ -111,16 +111,20 @@ Prevent writes; never "clean up" after them.
      edit files or run mutating commands.
    - Codex: `codex exec --sandbox read-only …`.
    - Gemini: `gemini --approval-mode plan …` (`plan` = read-only).
-   - Any CLI with no hard read-only mode: create a disposable worktree off HEAD,
-     run the panelist there, read its result, then `git worktree remove --force`
-     it. The user's checkout is never exposed.
+   - Any CLI with no hard read-only mode: create a disposable worktree off HEAD
+     at the fixed path `.fusion/worktrees/<run>/<panelist>-readonly`, run the
+     panelist with that worktree as its cwd, and read its result. Before removal,
+     verify the resolved path is inside `.fusion/worktrees/`, then remove that
+     exact path: `git worktree remove --force .fusion/worktrees/<run>/<panelist>-readonly`.
+     Never pass a placeholder, empty, or unverified computed path to
+     `git worktree remove`. The user's checkout is never exposed.
 2. Tripwire, not cleanup: capture `git status --porcelain` before and after each
-   panelist that touched the real checkout. If it differs, STOP — record a
-   `READ-ONLY VIOLATION` in that panelist's ledger block, discard that panelist's
-   output, and surface it to the user. Do NOT run `git checkout -- .` or
-   mass-delete untracked files; that wipes pre-existing work. If one stray path
-   must be undone, touch only paths that are new in the after-snapshot and absent
-   from the before-snapshot, after confirming the panelist created them.
+   panelist that touched the real checkout. If it differs, STOP and do not edit
+   the tree at all — record a `READ-ONLY VIOLATION` in that panelist's ledger
+   block, discard that panelist's output, and ask the user how to proceed. Never
+   run `git checkout -- .`, mass-delete untracked files, or auto-undo "stray"
+   paths: a long panel run can race with files the user created, so an automated
+   undo can destroy real work. Leave the tree as found and let the user decide.
 
 ## Modes
 

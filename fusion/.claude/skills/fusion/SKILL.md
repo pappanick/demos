@@ -102,18 +102,25 @@ OPEN: <questions for judge | none>
 ## Read-Only Enforcement
 
 "Do not edit files" in plan/review is an instruction, not a guard — Gemini,
-Codex, Kimi, and GLM are agentic CLIs that *can* write. Enforce read-only two ways:
+Codex, Kimi, and GLM are agentic CLIs that *can* write. Review mode runs against a
+dirty tree, so a careless revert would destroy the user's uncommitted work.
+Prevent writes; never "clean up" after them.
 
-1. Run each external panelist in its CLI's read-only mode when available:
-   - opencode (Kimi/GLM): `opencode run --agent plan …` — the built-in `plan`
-     agent cannot edit files or run mutating commands.
-   - Codex: `--sandbox read-only`.
-   - Gemini: a no-write / approval-required mode.
-2. Regardless of mode, snapshot the tree around every plan/review panelist:
-   capture `git status --porcelain` before, then after. If tracked files changed,
-   restore them (`git checkout -- .`, delete new untracked files) and record a
-   `READ-ONLY VIOLATION` in that panelist's ledger block. Never carry an
-   unrequested edit into the synthesis.
+1. Run each external panelist in its CLI's hard read-only mode:
+   - opencode (Kimi/GLM): `opencode run --agent plan …` — the `plan` agent cannot
+     edit files or run mutating commands.
+   - Codex: `codex exec --sandbox read-only …`.
+   - Gemini: `gemini --approval-mode plan …` (`plan` = read-only).
+   - Any CLI with no hard read-only mode: create a disposable worktree off HEAD,
+     run the panelist there, read its result, then `git worktree remove --force`
+     it. The user's checkout is never exposed.
+2. Tripwire, not cleanup: capture `git status --porcelain` before and after each
+   panelist that touched the real checkout. If it differs, STOP — record a
+   `READ-ONLY VIOLATION` in that panelist's ledger block, discard that panelist's
+   output, and surface it to the user. Do NOT run `git checkout -- .` or
+   mass-delete untracked files; that wipes pre-existing work. If one stray path
+   must be undone, touch only paths that are new in the after-snapshot and absent
+   from the before-snapshot, after confirming the panelist created them.
 
 ## Modes
 

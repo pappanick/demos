@@ -5,5 +5,5 @@ Small, self-contained demos. AI panel beats solo players — inspired by OpenRou
 ## Contents
 
 - [`fusion/`](fusion/) — a local multi-model "Fusion" panel for Claude Code. One
-  model judges; Claude, Gemini, Codex, Kimi, and GLM act as panelists for
+  model judges; Claude, agy (Antigravity), Codex, Kimi, and GLM act as panelists for
   planning, review, and parallel execution.

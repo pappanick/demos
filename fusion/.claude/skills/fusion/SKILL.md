@@ -1,5 +1,5 @@
 ---
-description: Run a local Fusion-style panel using Claude, Gemini, and Codex subscriptions plus OpenRouter models (Kimi, GLM) for planning, execution, and review.
+description: Run a local Fusion-style panel using Claude, Antigravity (agy/Gemini), and Codex subscriptions plus OpenRouter models (Kimi, GLM) for planning, execution, and review.
 disable-model-invocation: true
 ---
 
@@ -19,14 +19,14 @@ If unclear, choose `plan` for decisions and `review` for existing diffs.
 ## Panel Roster
 
 - `fusion-opus-panelist` — Claude
-- Gemini CLI
+- Antigravity CLI (`agy`) — `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` (replaces the retired `gemini` CLI; free Gemini Code Assist tier was discontinued)
 - Codex CLI
 - Kimi — `opencode run --model openrouter/moonshotai/kimi-k2.7-code`
 - GLM — `opencode run --model openrouter/z-ai/glm-5.2`
 
-Gemini, Codex, Kimi, and GLM are the non-Claude panel — all four are agentic
+agy, Codex, Kimi, and GLM are the non-Claude panel — all four are agentic
 CLIs with local file/worktree access. Treat them as equal members in every mode:
-wherever Gemini and Codex are asked, ask Kimi and GLM the same, including as
+wherever agy and Codex are asked, ask Kimi and GLM the same, including as
 worktree writers in Execute Parallel.
 
 Kimi and GLM are driven through opencode (OpenRouter is the model provider; see
@@ -68,7 +68,7 @@ Before calling any panelist, write `PROMPT.md` with:
 - WORKTREE PLAN: only for parallel execution
 - LEDGER SO FAR: current ledger contents
 
-Never ask a non-Claude panelist (Gemini, Codex, Kimi, GLM) to judge code from the
+Never ask a non-Claude panelist (agy, Codex, Kimi, GLM) to judge code from the
 ledger alone. Give them the context packet, relevant files, diffs, tests,
 constraints, and task.
 
@@ -101,16 +101,27 @@ OPEN: <questions for judge | none>
 
 ## Read-Only Enforcement
 
-"Do not edit files" in plan/review is an instruction, not a guard — Gemini,
+"Do not edit files" in plan/review is an instruction, not a guard — agy,
 Codex, Kimi, and GLM are agentic CLIs that *can* write. Review mode runs against a
 dirty tree, so a careless revert would destroy the user's uncommitted work.
 Prevent writes; never "clean up" after them.
 
 1. Run each external panelist in its CLI's hard read-only mode:
-   - opencode (Kimi/GLM): `opencode run --agent plan …` — the `plan` agent cannot
-     edit files or run mutating commands.
-   - Codex: `codex exec --sandbox read-only …`.
-   - Gemini: `gemini --approval-mode plan …` (`plan` = read-only).
+   - opencode (Kimi/GLM): `opencode run --agent plan … < /dev/null` — the `plan`
+     agent cannot edit files or run mutating commands. ALWAYS close stdin with
+     `< /dev/null`: `opencode run` reads stdin to append piped input to the
+     message, so when launched as a background task (stdin = an open pipe with no
+     EOF) it blocks forever at `message=init` and never reaches the model.
+   - Codex: `codex exec --sandbox read-only … < /dev/null` (close stdin, or
+     `codex exec` blocks waiting to append stdin to the positional prompt).
+   - agy (Antigravity / Gemini): NO hard read-only mode. `--sandbox` only
+     restricts terminal commands, not file-edit tools, so treat agy as a
+     "no hard read-only mode" CLI: prefer the disposable-worktree fallback in
+     the next bullet, or at minimum run
+     `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` from the main
+     checkout and rely on the tripwire (step 2). The retired `gemini` CLI's
+     `--approval-mode plan` no longer authenticates (free Code Assist tier
+     discontinued; migrate to `agy`).
    - Any CLI with no hard read-only mode: create a disposable worktree off HEAD
      at the fixed path `.fusion/worktrees/<run>/<panelist>-readonly`, run the
      panelist with that worktree as its cwd, and read its result. Before removal,
@@ -134,8 +145,8 @@ All panelists are read-only — enforce per Read-Only Enforcement.
 
 1. Build `PROMPT.md`.
 2. Ask `fusion-opus-panelist` to analyze and return one result block.
-3. Ask Gemini, Codex, Kimi, and GLM to analyze `PROMPT.md`; require one result
-   block each; no edits. Gemini and Codex via their CLIs, Kimi and GLM via
+3. Ask agy, Codex, Kimi, and GLM to analyze `PROMPT.md`; require one result
+   block each; no edits. agy and Codex via their CLIs, Kimi and GLM via
    opencode.
 4. Append all blocks to `LEDGER.md`.
 5. Synthesize one plan: agreements, disagreements, chosen path, risks, validation.
@@ -146,8 +157,8 @@ All panelists are read-only — enforce per Read-Only Enforcement.
 
 1. Build `PROMPT.md` with current diff, files, tests, and constraints.
 2. Ask `fusion-opus-panelist` for strict review.
-3. Ask Gemini, Codex, Kimi, and GLM for strict review: findings first, severity
-   ordered, file/line grounded. Gemini and Codex via their CLIs, Kimi and GLM
+3. Ask agy, Codex, Kimi, and GLM for strict review: findings first, severity
+   ordered, file/line grounded. agy and Codex via their CLIs, Kimi and GLM
    via opencode.
 4. Append all blocks.
 5. Judge decides which findings are valid.
@@ -158,7 +169,7 @@ All panelists are read-only — enforce per Read-Only Enforcement.
 
 Only one writer.
 
-1. Choose WRITER: any one panelist — judge, `fusion-opus-panelist`, Gemini,
+1. Choose WRITER: any one panelist — judge, `fusion-opus-panelist`, agy,
    Codex, Kimi, or GLM. One writer only. A non-Claude writer runs in the main
    checkout via its CLI (Kimi/GLM: `opencode run` without `--dir`).
 2. Build `PROMPT.md`.
@@ -176,14 +187,14 @@ Use separate worktrees and branches.
 1. Capture `BASE_SHA=$(git rev-parse HEAD)`.
 2. Create branches/worktrees from the same base:
    - `fusion/<run>/opus`
-   - `fusion/<run>/gemini`
+   - `fusion/<run>/agy`
    - `fusion/<run>/codex`
    - `fusion/<run>/kimi`
    - `fusion/<run>/glm`
 3. Each worker edits only its own worktree, but writes its result block to the
    MAIN run dir by absolute path — never to a `.fusion/` inside the worktree.
    Kimi and GLM run as (message first, `--file` last, absolute paths):
-   `opencode run "Implement only in this worktree. Return exactly one Fusion result block." --dir <worktree> --model openrouter/<id> --file=<run-dir>/prompts/<name>.md > <run-dir>/results/<name>.md`
+   `opencode run "Implement only in this worktree. Return exactly one Fusion result block." --dir <worktree> --model openrouter/<id> --file=<run-dir>/prompts/<name>.md < /dev/null > <run-dir>/results/<name>.md`
 4. Each worker's result block (in `<run-dir>/results/<name>.md`) records:
    - branch
    - worktree path
@@ -194,7 +205,7 @@ Use separate worktrees and branches.
    workers never write the central ledger directly.
 5. Judge compares:
    - `git diff <base>...fusion/<run>/opus`
-   - `git diff <base>...fusion/<run>/gemini`
+   - `git diff <base>...fusion/<run>/agy`
    - `git diff <base>...fusion/<run>/codex`
    - `git diff <base>...fusion/<run>/kimi`
    - `git diff <base>...fusion/<run>/glm`
@@ -207,8 +218,8 @@ Use separate worktrees and branches.
 
 Prefer prompt files over interpolating raw user text into shell commands.
 
-For Gemini, Codex, Kimi, and GLM:
-- create `prompts/gemini.md`, `prompts/codex.md`, `prompts/kimi.md`, `prompts/glm.md`
+For agy, Codex, Kimi, and GLM:
+- create `prompts/agy.md`, `prompts/codex.md`, `prompts/kimi.md`, `prompts/glm.md`
 - include `PROMPT.md` plus latest `LEDGER.md`
 - require exactly one Fusion result block
 - in plan/review, explicitly say: `Do not edit files.`
@@ -218,10 +229,23 @@ packet via `--file=<path>` with a short message positional first (see opencode
 Panelists). Only fall back to `"$(cat prompt-file)"` when a CLI has no file/stdin
 input; even then the prompt is read as file data, not spliced raw into the shell.
 
+agy (Antigravity) has no `--file` flag; pass the packet via `-p "$(cat prompts/agy.md)"`
+(command-substitution output is not re-parsed, so embedded backticks/`$()` are safe).
+It needs no TTY in `--print` mode. Pin the model explicitly — the panel uses
+`--model "Gemini 3.1 Pro (High)"` (quote it: the model name contains spaces). Read-only
+runs add `--sandbox`; list models with `agy models`:
+
+```sh
+# read-only (plan/review) — sandbox + tripwire (agy has no hard read-only mode)
+agy -p "$(cat <run-dir>/prompts/agy.md)" \
+  --model "Gemini 3.1 Pro (High)" --sandbox \
+  > <run-dir>/results/agy.md 2> <run-dir>/results/agy.err
+```
+
 ## opencode Panelists
 
 Kimi and GLM are agentic CLIs driven through opencode, with OpenRouter as the
-model provider. They are full panelists in every mode, equal to Gemini and Codex.
+model provider. They are full panelists in every mode, equal to agy and Codex.
 
 Models (registered in `~/.config/opencode/opencode.jsonc` under
 `provider.openrouter.models`):
@@ -249,12 +273,12 @@ main `.fusion/runs/<ts>/`:
 # read-only (plan/review) — `--agent plan` is a hard guard (cannot edit files)
 opencode run "Read the attached prompt. Return exactly one Fusion result block." \
   --agent plan --model openrouter/moonshotai/kimi-k2.7-code \
-  --file=<run-dir>/prompts/kimi.md > <run-dir>/results/kimi.md
+  --file=<run-dir>/prompts/kimi.md < /dev/null > <run-dir>/results/kimi.md
 
 # Execute Parallel writer — edits its own worktree, result to the MAIN run dir
 opencode run "Read the attached prompt. Implement only in this worktree. Return exactly one Fusion result block." \
   --dir <worktree> --model openrouter/z-ai/glm-5.2 \
-  --file=<run-dir>/prompts/glm.md > <run-dir>/results/glm.md
+  --file=<run-dir>/prompts/glm.md < /dev/null > <run-dir>/results/glm.md
 ```
 
 Swap model, prompt file, and output path per panelist. If opencode prints a

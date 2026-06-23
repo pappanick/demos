@@ -19,7 +19,7 @@ If unclear, choose `plan` for decisions and `review` for existing diffs.
 ## Panel Roster
 
 - `fusion-opus-panelist` — Claude
-- Antigravity CLI (`agy`) — `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` (replaces the retired `gemini` CLI; free Gemini Code Assist tier was discontinued)
+- Antigravity CLI (`agy`) — `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox < /dev/null` (replaces the retired `gemini` CLI; free Gemini Code Assist tier was discontinued; `< /dev/null` is mandatory — agy hangs backgrounded otherwise)
 - Codex CLI
 - Kimi — `opencode run --model openrouter/moonshotai/kimi-k2.7-code`
 - GLM — `opencode run --model openrouter/z-ai/glm-5.2`
@@ -118,8 +118,8 @@ Prevent writes; never "clean up" after them.
      restricts terminal commands, not file-edit tools, so treat agy as a
      "no hard read-only mode" CLI: prefer the disposable-worktree fallback in
      the next bullet, or at minimum run
-     `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` from the main
-     checkout and rely on the tripwire (step 2). The retired `gemini` CLI's
+     `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox < /dev/null` from the
+     main checkout and rely on the tripwire (step 2). The retired `gemini` CLI's
      `--approval-mode plan` no longer authenticates (free Code Assist tier
      discontinued; migrate to `agy`).
    - Any CLI with no hard read-only mode: create a disposable worktree off HEAD
@@ -231,15 +231,22 @@ input; even then the prompt is read as file data, not spliced raw into the shell
 
 agy (Antigravity) has no `--file` flag; pass the packet via `-p "$(cat prompts/agy.md)"`
 (command-substitution output is not re-parsed, so embedded backticks/`$()` are safe).
-It needs no TTY in `--print` mode. Pin the model explicitly — the panel uses
+**ALWAYS close stdin with `< /dev/null`** (the #1 reason agy "fails" as a panelist):
+like codex and opencode, agy in `--print` mode reads stdin to append to the `-p`
+prompt, so a BACKGROUNDED run (stdin = open pipe, no EOF) blocks forever at 0 bytes
+until the timeout. Foreground runs work because foreground stdin EOFs immediately —
+which is why a smoke test passes but every backgrounded panel run produced 0 bytes.
+Confirmed empirically: same prompt backgrounded WITH `< /dev/null` → answer in ~40s;
+WITHOUT → hangs to timeout, 0 bytes. Pin the model explicitly — the panel uses
 `--model "Gemini 3.1 Pro (High)"` (quote it: the model name contains spaces). Read-only
 runs add `--sandbox`; list models with `agy models`:
 
 ```sh
 # read-only (plan/review) — sandbox + tripwire (agy has no hard read-only mode)
+# < /dev/null is MANDATORY for backgrounded runs (agy reads stdin like codex/opencode)
 agy -p "$(cat <run-dir>/prompts/agy.md)" \
   --model "Gemini 3.1 Pro (High)" --sandbox \
-  > <run-dir>/results/agy.md 2> <run-dir>/results/agy.err
+  < /dev/null > <run-dir>/results/agy.md 2> <run-dir>/results/agy.err
 ```
 
 ## opencode Panelists

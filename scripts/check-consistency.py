@@ -3,8 +3,21 @@
 
 The failure this exists to prevent actually happened: the repo shipped an
 opencode config registering `moonshotai/kimi-k2.7-code` while the skill invoked
-`moonshotai/kimi-k3`, so anyone who installed it got a ProviderModelNotFoundError
-on two of six seats. Model IDs live in three files and drift silently.
+`moonshotai/kimi-k3`, so two of six seats died with ProviderModelNotFoundError
+for anyone who installed it.
+
+Model IDs live in FOUR places, and the copy-paste block in the README is the one
+users actually merge into their own config:
+
+  1. fusion/skills/fusion/SKILL.md        — what the skill invokes  (source of truth)
+  2. fusion/opencode/opencode.jsonc       — the file we ship
+  3. fusion/README.md seat table          — prose
+  4. fusion/README.md ```jsonc block      — what users paste into their config
+
+An earlier version of this script tested `model in readme_text`, which matched
+the seat table while the paste block was wrong — a false pass on the exact
+regression named above. Sets are now compared for equality in both directions,
+and the paste block is parsed as JSON rather than substring-matched.
 
 Run: python3 scripts/check-consistency.py
 """
@@ -21,9 +34,14 @@ SKILL = ROOT / "fusion" / "skills" / "fusion" / "SKILL.md"
 OPENCODE = ROOT / "fusion" / "opencode" / "opencode.jsonc"
 PLUGIN_README = ROOT / "fusion" / "README.md"
 
-# `openrouter/vendor/model` — the generic placeholder `openrouter/<id>` has no
-# inner slash and so is correctly ignored.
+REQUIRED_AGENTS = ("fusion-opus-panelist", "fusion-fable-panelist")
+
+# `openrouter/vendor/model`. The generic placeholder `openrouter/<id>` has no
+# inner slash and no word characters in `<id>`, so it is correctly ignored.
 MODEL_RE = re.compile(r"openrouter/([\w.-]+/[\w.-]+)")
+
+# The first ```jsonc fence in the README is the block users merge.
+JSONC_FENCE_RE = re.compile(r"```jsonc\n(.*?)```", re.DOTALL)
 
 failures = []
 
@@ -34,8 +52,38 @@ def check(condition, message):
 
 
 def strip_jsonc(text):
-    """Drop //-comments so a .jsonc file can be parsed as JSON."""
+    """Drop whole-line //-comments so a .jsonc file parses as JSON.
+
+    Anchored to line start, so a `//` inside a string value (a URL, say) is
+    left alone.
+    """
     return re.sub(r"^\s*//.*$", "", text, flags=re.MULTILINE)
+
+
+def registered_models(blob, label):
+    """Model IDs registered under provider.openrouter.models, or None."""
+    try:
+        data = json.loads(strip_jsonc(blob))
+    except json.JSONDecodeError as exc:
+        check(False, f"{label} is not parseable JSON/JSONC: {exc}")
+        return None
+    try:
+        return set(data["provider"]["openrouter"]["models"])
+    except (KeyError, TypeError):
+        check(False, f"{label} has no provider.openrouter.models map")
+        return None
+
+
+def compare(skill_models, found, label):
+    """Assert a registration site matches the skill exactly, both directions."""
+    if found is None:
+        return
+    for missing in sorted(skill_models - found):
+        check(False, f"{label}: SKILL.md invokes openrouter/{missing} but it is "
+                     f"not registered there — opencode rejects unregistered models")
+    for stale in sorted(found - skill_models):
+        check(False, f"{label}: registers {stale}, which SKILL.md does not "
+                     f"invoke — stale entry will send users to a dead model")
 
 
 def main():
@@ -46,11 +94,10 @@ def main():
 
     marketplace = json.loads(MARKETPLACE.read_text())
     plugin = json.loads(PLUGIN.read_text())
-    opencode = json.loads(strip_jsonc(OPENCODE.read_text()))
     skill_text = SKILL.read_text()
     readme_text = PLUGIN_README.read_text()
 
-    # --- manifests agree with each other and with the tree ---
+    # --- manifests agree with each other and point at a real plugin ---
     entries = {p["name"]: p for p in marketplace.get("plugins", [])}
     check(
         plugin["name"] in entries,
@@ -58,48 +105,53 @@ def main():
         f"(listed: {sorted(entries)})",
     )
     if plugin["name"] in entries:
-        source = entries[plugin["name"]]["source"]
+        source = ROOT / entries[plugin["name"]]["source"]
+        check(source.is_dir(), f"marketplace.json source is not a directory: {source}")
+        # A source that merely exists is not enough — it must BE a plugin.
+        manifest = source / ".claude-plugin" / "plugin.json"
         check(
-            (ROOT / source).is_dir(),
-            f"marketplace.json source {source!r} is not a directory",
+            manifest.exists(),
+            f"marketplace.json source {source.name!r} has no "
+            f".claude-plugin/plugin.json — install would resolve but load nothing",
         )
+        if manifest.exists():
+            check(
+                json.loads(manifest.read_text())["name"] == plugin["name"],
+                f"plugin name at {manifest} disagrees with marketplace entry",
+            )
 
-    # --- conventional component dirs are where Claude Code looks for them ---
+    # --- conventional component dirs are where Claude Code looks ---
     plugin_dir = ROOT / "fusion"
     check(
         (plugin_dir / "skills" / "fusion" / "SKILL.md").exists(),
         "skill must live at fusion/skills/fusion/SKILL.md for auto-discovery",
     )
-    for agent in ("fusion-opus-panelist", "fusion-fable-panelist"):
+    for agent in REQUIRED_AGENTS:
         check(
             (plugin_dir / "agents" / f"{agent}.md").exists(),
             f"missing agent fusion/agents/{agent}.md — the skill's Panel Roster "
             f"names it, so shipping without it yields a seat that cannot start",
         )
 
-    # --- every model the skill invokes is registered and documented ---
+    # --- every model the skill invokes is registered in every place ---
     skill_models = set(MODEL_RE.findall(skill_text))
     check(skill_models, "no openrouter model IDs found in SKILL.md — regex stale?")
 
-    registered = set(opencode["provider"]["openrouter"]["models"])
-    for model in sorted(skill_models):
-        check(
-            model in registered,
-            f"SKILL.md invokes openrouter/{model} but opencode.jsonc registers "
-            f"{sorted(registered)} — opencode rejects unregistered models",
-        )
-        check(
-            model in readme_text,
-            f"SKILL.md invokes openrouter/{model} but fusion/README.md does not "
-            f"mention it — install docs would register the wrong model",
-        )
+    compare(skill_models, registered_models(OPENCODE.read_text(), "opencode.jsonc"),
+            "opencode.jsonc")
 
-    # --- no stale registrations pointing at models the skill dropped ---
-    for model in sorted(registered - skill_models):
-        check(
-            False,
-            f"opencode.jsonc registers {model} which SKILL.md no longer invokes",
-        )
+    fence = JSONC_FENCE_RE.search(readme_text)
+    check(fence, "fusion/README.md has no ```jsonc block — users have nothing to "
+                 "copy into their opencode config")
+    if fence:
+        compare(skill_models,
+                registered_models(fence.group(1), "the README ```jsonc block"),
+                "README paste block")
+
+    # --- prose mentions every model too (weaker, but catches a stale table) ---
+    for model in sorted(skill_models):
+        check(model in readme_text,
+              f"fusion/README.md never mentions {model}")
 
     return report(skill_models)
 
@@ -111,7 +163,7 @@ def report(models=()):
             print(f"  - {f}", file=sys.stderr)
         return 1
     print(f"OK — manifests agree; {len(models)} model ID(s) consistent across "
-          f"SKILL.md, opencode.jsonc, and README.md")
+          f"SKILL.md, opencode.jsonc, and both README sites")
     for m in sorted(models):
         print(f"  openrouter/{m}")
     return 0

@@ -596,13 +596,39 @@ Final answer must include:
 - files changed, if any
 - validation run, if any
 - remaining risks or open questions
-- panel quorum: how many seats returned parseable blocks, and every skip by name
+- the PANEL ROLL-CALL below: every seat attempted, its status, and its own
+  one-line position
 - rounds run and why the loop stopped: grounded convergence | no-progress
   (futility) | cap reached | degraded
 - on any non-converged outcome, the `RESIDUAL DISAGREEMENT:` section required by
   Consensus Rounds (each dissenting seat, its verdict, its file:line)
 
 Drop unsupported claims. Do not majority-vote blindly.
+
+**Panel roll-call.** Emit one row per seat ATTEMPTED — not per seat that
+answered — before any synthesis:
+
+| Seat | Status | Its own one-line position | Findings | Block |
+| --- | --- | --- | --- | --- |
+| `fusion-opus-panelist` | returned | "…quoted from its CONCLUSION…" | 3 | `results/opus.md` |
+| `agy` | returned | "…" | 4 | `results/agy.md` |
+| `kimi` | SKIPPED (TIMEOUT) | — | — | `results/kimi.err` |
+
+The position column is QUOTED from that seat's own CONCLUSION — elide with an
+ellipsis, never reword. A judge paraphrase here reintroduces the compression the
+ledger rules already forbid, and it is dissent that gets smoothed: "raises some
+concerns about X" is what a rejected objection looks like after the judge has
+decided against it. If a position will not fit on one line, quote its first
+clause and point at the block rather than summarizing it.
+
+A seat whose finding the judge REJECTED still appears, with its position intact
+and a pointer to where the rejection is argued. Rejection is recorded in the
+adjudication, never by omission — a missing row and a refuted claim are
+indistinguishable to the reader, and only one of them is honest.
+
+Emit the roll-call even when every seat agreed. Unanimity is a result the reader
+is entitled to check, and prose alone cannot distinguish a unanimous panel from a
+panel of one.
 
 **Agreement is not corroboration.** Before counting agreement as evidence, check
 whether each agreeing panelist cites something it read itself or merely restates

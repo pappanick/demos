@@ -38,20 +38,31 @@ Since this repo holds several demos, you can check out only what Fusion needs:
 
 ### What you get with nothing else installed
 
-**Install gives you a working panel — both Claude seats, out of the box. Every
-extra CLI you have installed adds a seat.**
+**Runs work immediately with only Claude Code — but a Claude-only panel is a
+degraded panel, and the protocol will say so on every run.**
 
-A missing CLI is never fatal. The judge records it as a skip in the ledger,
-reports the quorum it actually ran, and proceeds. What a plugin cannot do is
-install other people's binaries or write their config, so the remaining seats are
-opt-in:
+A missing CLI is never fatal. The judge records it as a skip, reports the quorum
+it actually ran, and proceeds. But be clear about what two seats buy you:
 
-| Seat | Needs |
-| --- | --- |
-| Opus, Fable | nothing — ships with the plugin |
-| Antigravity | [`agy`](https://antigravity.google) on `PATH` |
-| Codex | [`codex`](https://github.com/openai/codex) on `PATH` |
-| Kimi, GLM | [opencode](https://opencode.ai) + OpenRouter auth + the model registration below |
+- The skill labels a run `DEGRADED` when fewer than three panelists return
+  blocks ([`SKILL.md`](skills/fusion/SKILL.md) — "Timeouts and skips"). With only
+  the Claude seats you are permanently under that threshold, so runs route to the
+  fallback path rather than the evidence-grounded convergence exit.
+- `review:` mode seats **only** `fusion-opus-panelist` (see Modes → Review). Fable
+  is not in the review workflow, so a Claude-only review is a one-model review —
+  which is the thing this skill exists to avoid.
+- The two Claude seats are the one pair whose errors correlate, and the protocol
+  deliberately discounts their agreement rather than counting it as two votes.
+
+**Install one external CLI and the panel becomes real.** Any single one of them
+clears the quorum threshold for `plan:`; `review:` wants two.
+
+| Seat | Needs | Seats added |
+| --- | --- | --- |
+| Opus, Fable | nothing — ships with the plugin | 2 (but see above) |
+| Antigravity | [`agy`](https://antigravity.google) on `PATH` | 1 |
+| Codex | [`codex`](https://github.com/openai/codex) on `PATH` | 1 |
+| Kimi + GLM | [opencode](https://opencode.ai), **plus** OpenRouter auth **and** the model registration below — the binary alone is not enough | 2 |
 
 ### Enabling the Kimi and GLM seats
 

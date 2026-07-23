@@ -23,9 +23,9 @@ Then install whichever demo you want:
 | --- | --- |
 | [`fusion/`](fusion/) | A local multi-model panel. One model judges; Claude Opus, Claude Fable, Antigravity, Codex, Kimi, and GLM act as panelists for planning, review, and parallel execution. |
 
-Fusion works with nothing but Claude Code installed — you get both Claude seats
-out of the box, and each additional CLI on your `PATH` adds a seat. See
-[`fusion/README.md`](fusion/README.md).
+Fusion runs with nothing but Claude Code installed, though a Claude-only panel is
+a degraded one by the skill's own quorum rules — install one external CLI and the
+panel becomes real. See [`fusion/README.md`](fusion/README.md).
 
 ## License
 

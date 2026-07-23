@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "demos",
+  "description": "Small, self-contained demos for Claude Code.",
+  "owner": {
+    "name": "Nikos Pappas"
+  },
+  "plugins": [
+    {
+      "name": "fusion",
+      "description": "Run your task past a panel of models — Claude, Antigravity, Codex, Kimi, GLM — and adjudicate the results instead of trusting one model alone.",
+      "source": "./fusion",
+      "category": "development",
+      "homepage": "https://github.com/pappanick/demos/tree/main/fusion"
+    }
+  ]
+}

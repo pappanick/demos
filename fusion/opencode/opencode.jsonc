@@ -1,10 +1,13 @@
+// Merge into ~/.config/opencode/opencode.jsonc — opencode rejects any model that
+// is not registered here, so the Kimi and GLM seats need these two entries.
+// Model IDs are pinned to match fusion/skills/fusion/SKILL.md; CI asserts they agree.
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
     "openrouter": {
       "models": {
-        "moonshotai/kimi-k2.7-code": {
-          "name": "Kimi K2.7 Code (OpenRouter)"
+        "moonshotai/kimi-k3": {
+          "name": "Kimi K3 (OpenRouter)"
         },
         "z-ai/glm-5.2": {
           "name": "GLM 5.2 (OpenRouter)"

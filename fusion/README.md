@@ -11,10 +11,13 @@ results, instead of trusting one model alone. You are the **judge**; the panel i
 | Codex | `codex` CLI |
 | Kimi (`moonshotai/kimi-k3`) | `opencode run` → OpenRouter |
 | GLM (`z-ai/glm-5.2`) | `opencode run` → OpenRouter |
+| Qwen (`qwen/qwen3.8-max`) | `opencode run` → OpenRouter |
 
-Antigravity, Codex, Kimi, and GLM are all agentic CLIs with local file/worktree
-access, so they are equal members in every mode — including writing code in
-isolated worktrees during parallel execution.
+Antigravity, Codex, Kimi, GLM, and Qwen are all agentic CLIs with local
+file/worktree access, so they are equal members in every mode — including writing
+code in isolated worktrees during parallel execution. Kimi, GLM, and Qwen are
+three distinct labs but share one OpenRouter dependency, so they drop as a group
+if that auth fails.
 
 The two Claude seats are deliberately different models. They are also the one
 pair whose errors correlate, so the protocol does not count their agreement as
@@ -62,9 +65,9 @@ clears the quorum threshold for `plan:`; `review:` wants two.
 | Opus, Fable | nothing — ships with the plugin | 2 (but see above) |
 | Antigravity | [`agy`](https://antigravity.google) on `PATH` | 1 |
 | Codex | [`codex`](https://github.com/openai/codex) on `PATH` | 1 |
-| Kimi + GLM | [opencode](https://opencode.ai), **plus** OpenRouter auth **and** the model registration below — the binary alone is not enough | 2 |
+| Kimi + GLM + Qwen | [opencode](https://opencode.ai), **plus** OpenRouter auth **and** the model registration below — the binary alone is not enough | 3 |
 
-### Enabling the Kimi and GLM seats
+### Enabling the Kimi, GLM, and Qwen seats
 
 opencode rejects any model that is not registered in its config, so merge
 [`opencode/opencode.jsonc`](opencode/opencode.jsonc) into your
@@ -77,7 +80,8 @@ opencode rejects any model that is not registered in its config, so merge
     "openrouter": {
       "models": {
         "moonshotai/kimi-k3": { "name": "Kimi K3 (OpenRouter)" },
-        "z-ai/glm-5.2":       { "name": "GLM 5.2 (OpenRouter)" }
+        "z-ai/glm-5.2":       { "name": "GLM 5.2 (OpenRouter)" },
+        "qwen/qwen3.8-max":   { "name": "Qwen3.8 Max (OpenRouter)" }
       }
     }
   }

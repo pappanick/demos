@@ -1,5 +1,7 @@
 // Merge into ~/.config/opencode/opencode.jsonc — opencode rejects any model that
-// is not registered here, so the Kimi and GLM seats need these two entries.
+// is not registered here, so the Kimi, GLM, and Qwen seats need these three entries.
+// (opencode's cached catalog may lag OpenRouter's live one, so a brand-new model
+// like qwen3.8-max must be registered explicitly even though the API serves it.)
 // Model IDs are pinned to match fusion/skills/fusion/SKILL.md; CI asserts they agree.
 {
   "$schema": "https://opencode.ai/config.json",
@@ -11,6 +13,9 @@
         },
         "z-ai/glm-5.2": {
           "name": "GLM 5.2 (OpenRouter)"
+        },
+        "qwen/qwen3.8-max": {
+          "name": "Qwen3.8 Max (OpenRouter)"
         }
       }
     }

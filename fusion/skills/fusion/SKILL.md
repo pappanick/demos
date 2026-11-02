@@ -1,5 +1,5 @@
 ---
-description: Run a local Fusion-style panel using Claude, Antigravity (agy/Gemini), and Codex subscriptions plus OpenRouter models (Kimi, GLM, Qwen) for planning, execution, and review.
+description: Run a local Fusion-style panel using Claude, Antigravity (agy/Gemini), and Codex subscriptions plus opencode models (Kimi, GLM, Qwen, DeepSeek — OpenCode Go first, OpenRouter fallback) for planning, execution, and review.
 disable-model-invocation: true
 ---
 
@@ -23,41 +23,36 @@ If unclear, choose `plan` for decisions and `review` for existing diffs.
 
 ## Panel Roster
 
-- `fusion-opus-panelist` — Claude (Opus)
-- `fusion-fable-panelist` — Claude (Fable 5), a second Claude seat run as a
-  subagent exactly like the Opus seat (`model: fable`), NOT a CLI. Give it the
-  same packet, read access, and mandate as every other seat.
+- `fusion-opus-panelist` — Claude (Opus), the one Claude seat
 - Antigravity CLI (`agy`) — `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` (replaces the retired `gemini` CLI; free Gemini Code Assist tier was discontinued)
 - Codex CLI
-- Kimi — `opencode run --model openrouter/moonshotai/kimi-k3`
-- GLM — `opencode run --model openrouter/z-ai/glm-5.2`
-- Qwen — `opencode run --model openrouter/qwen/qwen3.8-max`
+- Kimi — `opencode run --model opencode-go/kimi-k3.1-pro`
+- GLM — `opencode run --model opencode-go/glm-5.3`
+- Qwen — `opencode run --model opencode-go/qwen3.8-max`
+- DeepSeek — `opencode run --model opencode-go/deepseek-v4.1-flash`
 
-agy, Codex, Kimi, GLM, and Qwen are the non-Claude panel — all five are agentic
-CLIs with local file/worktree access. Treat them as equal members in every mode:
-wherever agy and Codex are asked, ask Kimi, GLM, and Qwen the same, including as
-worktree writers in Execute Parallel.
+The opencode seats run on the OpenCode Go subscription first and fall back to
+OpenRouter per seat (see opencode Panelists).
 
-**Provider correlation.** `fusion-opus-panelist` and `fusion-fable-panelist` are
-both Anthropic models, so their errors correlate more than any cross-provider pair
-does. When they agree, that is closer to one provider's view than to two
-independent confirmations — do not count opus+fable agreement as two votes. The
-"Agreement is not corroboration" file:line test (Judge Output) already handles
-this; this note names why the two Claude seats are not independent.
+The Fable 5 seat is archived (`fusion/archive/`) until the subscription covers
+it; do not invoke it.
 
-Kimi, GLM, and Qwen are driven through opencode (OpenRouter is the model
-provider; see opencode Panelists). They are three distinct labs (Moonshot,
-Z-ai, Alibaba), so unlike the two Claude seats they do not correlate — but they
-share ONE dependency: if opencode or its OpenRouter auth is unavailable, all
-three skip together. Note each skip in the ledger — do not fail the run — and
-remember that losing this whole sub-panel at once can cross the DEGRADED
-threshold on its own.
+agy, Codex, Kimi, GLM, Qwen, and DeepSeek are the non-Claude panel — all six are
+agentic CLIs with local file/worktree access. Treat them as equal members in every
+mode: wherever agy and Codex are asked, ask Kimi, GLM, Qwen, and DeepSeek the
+same, including as worktree writers in Execute Parallel.
+
+Kimi, GLM, Qwen, and DeepSeek are driven through opencode (see opencode
+Panelists). They are four distinct labs (Moonshot, Z-ai, Alibaba, DeepSeek), so
+they do not correlate by provider — but they share ONE dependency: if opencode
+itself is unavailable, or both OpenCode Go and OpenRouter auth fail, all four skip
+together. Note each skip in the ledger — do not fail the run — and remember that
+losing this whole sub-panel at once can cross the DEGRADED threshold on its own.
 
 **Parity invariant.** Every panelist receives the same context packet, the same
 read access to the material under analysis, and the same verify-or-reject
 mandate. If one seat gets a source path, a verify instruction, or a challenge
-mandate, every seat gets it — both Claude seats (`fusion-opus-panelist`,
-`fusion-fable-panelist`) included. The roster rule
+mandate, every seat gets it — `fusion-opus-panelist` included. The roster rule
 above is parity of TASK; this is parity of INPUT. Unequal inputs produce unequal
 conclusions that the judge will misread as disagreement between models.
 
@@ -124,7 +119,7 @@ Before calling any panelist, write `PROMPT.md` with:
 - WORKTREE PLAN: only for parallel execution
 - LEDGER SO FAR: current ledger contents
 
-Never ask a non-Claude panelist (agy, Codex, Kimi, GLM, Qwen) to judge code from the
+Never ask a non-Claude panelist (agy, Codex, Kimi, GLM, Qwen, DeepSeek) to judge code from the
 ledger alone. Give them the context packet, relevant files, diffs, tests,
 constraints, and task.
 
@@ -148,7 +143,7 @@ full contents, not an excerpt. Excerpts are for supporting files. A panelist
 given an excerpt reasons from your selection of it.
 
 **Disclosure.** Every external panelist ships the packet to a remote provider
-(Google, OpenAI, OpenRouter). Read-only protects writes, not confidentiality.
+(Google, OpenAI, OpenCode Go, OpenRouter). Read-only protects writes, not confidentiality.
 Include only what the task needs. Never send `.env` files, credentials, tokens,
 private keys, personal data, or unrelated repository content. If sensitive
 material is genuinely necessary, get explicit user approval first.
@@ -207,12 +202,12 @@ dissent. In Plan and Review, ask `fusion-opus-panelist` to write its block to
 ## Read-Only Enforcement
 
 "Do not edit files" in plan/review is an instruction, not a guard — agy,
-Codex, Kimi, GLM, and Qwen are agentic CLIs that *can* write. Review mode runs against a
+Codex, Kimi, GLM, Qwen, and DeepSeek are agentic CLIs that *can* write. Review mode runs against a
 dirty tree, so a careless revert would destroy the user's uncommitted work.
 Prevent writes; never "clean up" after them.
 
 1. Run each external panelist in its CLI's hard read-only mode:
-   - opencode (Kimi/GLM/Qwen): `opencode run --agent plan … < /dev/null` — the `plan`
+   - opencode (Kimi/GLM/Qwen/DeepSeek): `opencode run --agent plan … < /dev/null` — the `plan`
      agent cannot edit files or run mutating commands. ALWAYS close stdin with
      `< /dev/null`: `opencode run` reads stdin to append piped input to the
      message, so when launched as a background task (stdin = an open pipe with no
@@ -277,13 +272,11 @@ Prevent writes; never "clean up" after them.
 All panelists are read-only — enforce per Read-Only Enforcement.
 
 1. Build `PROMPT.md`.
-2. Ask both Claude seats to analyze — `fusion-opus-panelist` (writes
-   `<run-dir>/results/opus.md`) and `fusion-fable-panelist` (writes
-   `<run-dir>/results/fable.md`); each returns only its CONCLUSION line (Ledger
-   Block Format).
-3. Ask agy, Codex, Kimi, GLM, and Qwen to analyze `PROMPT.md`; require one result
-   block each; no edits. agy and Codex via their CLIs, Kimi, GLM, and Qwen via
-   opencode.
+2. Ask `fusion-opus-panelist` to analyze (writes `<run-dir>/results/opus.md`);
+   it returns only its CONCLUSION line (Ledger Block Format).
+3. Ask agy, Codex, Kimi, GLM, Qwen, and DeepSeek to analyze `PROMPT.md`; require
+   one result block each; no edits. agy and Codex via their CLIs, Kimi, GLM, Qwen,
+   and DeepSeek via opencode.
 4. Append all round-1 blocks to `LEDGER.md`, then adjudicate through Consensus
    Rounds — run the convergence test, bounded rebuttal rounds, and early exit or
    fallback.
@@ -297,9 +290,9 @@ All panelists are read-only — enforce per Read-Only Enforcement.
 
 1. Build `PROMPT.md` with current diff, files, tests, and constraints.
 2. Ask `fusion-opus-panelist` for strict review.
-3. Ask agy, Codex, Kimi, GLM, and Qwen for strict review: findings first, severity
-   ordered, file/line grounded. agy and Codex via their CLIs, Kimi, GLM, and Qwen
-   via opencode.
+3. Ask agy, Codex, Kimi, GLM, Qwen, and DeepSeek for strict review: findings
+   first, severity ordered, file/line grounded. agy and Codex via their CLIs, Kimi,
+   GLM, Qwen, and DeepSeek via opencode.
 4. Append all round-1 blocks.
 5. Judge decides which findings are valid. For a high-stakes or large diff (over
    ~200 changed lines), adjudicate contested findings through Consensus Rounds;
@@ -315,8 +308,9 @@ All panelists are read-only — enforce per Read-Only Enforcement.
 Only one writer.
 
 1. Choose WRITER: any one panelist — judge, `fusion-opus-panelist`, agy,
-   Codex, Kimi, GLM, or Qwen. One writer only. A non-Claude writer runs in the main
-   checkout via its CLI (Kimi/GLM/Qwen: `opencode run` without `--dir`).
+   Codex, Kimi, GLM, Qwen, or DeepSeek. One writer only. A non-Claude writer runs
+   in the main checkout via its CLI (Kimi/GLM/Qwen/DeepSeek: `opencode run`
+   without `--dir`).
 2. Before the writer touches the checkout, record `BASE_SHA=$(git rev-parse HEAD)`
    and save the pre-writer state to `<run-dir>/pre-writer.diff`, plus branch and
    `git status`. The user's uncommitted work is baseline, not the writer's
@@ -347,16 +341,17 @@ Use separate worktrees and branches.
 2. Create branches/worktrees from the same base (at most three writers per step 0
    — this is the per-seat naming scheme, not a mandate to run all seven):
    - `fusion/<run>/opus`
-   - `fusion/<run>/fable`
    - `fusion/<run>/agy`
    - `fusion/<run>/codex`
    - `fusion/<run>/kimi`
    - `fusion/<run>/glm`
    - `fusion/<run>/qwen`
+   - `fusion/<run>/deepseek`
 3. Each worker edits only its own worktree, but writes its result block to the
    MAIN run dir by absolute path — never to a `.fusion/` inside the worktree.
-   Kimi, GLM, and Qwen run as (message first, `--file` last, absolute paths):
-   `opencode run "Implement only in this worktree. Return exactly one Fusion result block." --dir <worktree> --model openrouter/<id> --file=<run-dir>/prompts/<name>.md < /dev/null > <run-dir>/results/<name>.md`
+   Kimi, GLM, Qwen, and DeepSeek run as (message first, `--file` last, absolute
+   paths; `<model>` is the seat's OpenCode Go id, or its OpenRouter fallback):
+   `opencode run "Implement only in this worktree. Return exactly one Fusion result block." --dir <worktree> --model <model> --file=<run-dir>/prompts/<name>.md < /dev/null > <run-dir>/results/<name>.md`
 4. Each worker's result block (in `<run-dir>/results/<name>.md`) records:
    - branch
    - worktree path
@@ -367,12 +362,12 @@ Use separate worktrees and branches.
    workers never write the central ledger directly.
 5. Judge compares (only the branches actually used as writers):
    - `git diff <base>...fusion/<run>/opus`
-   - `git diff <base>...fusion/<run>/fable`
    - `git diff <base>...fusion/<run>/agy`
    - `git diff <base>...fusion/<run>/codex`
    - `git diff <base>...fusion/<run>/kimi`
    - `git diff <base>...fusion/<run>/glm`
    - `git diff <base>...fusion/<run>/qwen`
+   - `git diff <base>...fusion/<run>/deepseek`
 6. Judge synthesizes on the main checkout: choose ONE branch as the base and
    cherry-pick from the others. Do not hand-merge divergent implementations.
 7. Run Review mode against the integrated diff (analysis steps only).
@@ -390,11 +385,11 @@ Prefer prompt files over interpolating raw user text into shell commands.
 Build `prompts/_shared.md` once per run: panelist role ("you are a panelist, not
 the judge"), the read-only instruction, the challenge mandate, and the required
 result-block format. Prepend it verbatim to EVERY panelist prompt —
-`fusion-opus-panelist` and all five CLI seats alike. Do not prime one seat with
+`fusion-opus-panelist` and all six CLI seats alike. Do not prime one seat with
 context the others lack.
 
-For agy, Codex, Kimi, GLM, and Qwen:
-- create `prompts/agy.md`, `prompts/codex.md`, `prompts/kimi.md`, `prompts/glm.md`, `prompts/qwen.md`
+For agy, Codex, Kimi, GLM, Qwen, and DeepSeek:
+- create `prompts/agy.md`, `prompts/codex.md`, `prompts/kimi.md`, `prompts/glm.md`, `prompts/qwen.md`, `prompts/deepseek.md`
 - each is `_shared.md` + `PROMPT.md`
 - require exactly one Fusion result block
 - in plan/review, explicitly say: `Do not edit files.`
@@ -457,25 +452,46 @@ agy -p "$(cat <run-dir>/prompts/agy.md)" \
 
 ## opencode Panelists
 
-Kimi, GLM, and Qwen are agentic CLIs driven through opencode, with OpenRouter as
-the model provider. They are full panelists in every mode, equal to agy and Codex.
+Kimi, GLM, Qwen, and DeepSeek are agentic CLIs driven through opencode. They are
+full panelists in every mode, equal to agy and Codex.
 
-Models (registered in `~/.config/opencode/opencode.jsonc` under
-`provider.openrouter.models`):
+**Provider order: OpenCode Go first, OpenRouter fallback.** Each seat has a
+primary model on the OpenCode Go subscription and the same model on OpenRouter
+(pay-per-token) as its fallback:
 
-- Kimi: `openrouter/moonshotai/kimi-k3`
-- GLM: `openrouter/z-ai/glm-5.2`
-- Qwen: `openrouter/qwen/qwen3.8-max`
+| Seat | Primary (OpenCode Go) | Fallback (OpenRouter) |
+| --- | --- | --- |
+| Kimi | `opencode-go/kimi-k3.1-pro` | `openrouter/moonshotai/kimi-k3.1-pro` |
+| GLM | `opencode-go/glm-5.3` | `openrouter/z-ai/glm-5.3` |
+| Qwen | `opencode-go/qwen3.8-max` | `openrouter/qwen/qwen3.8-max-0902` |
+| DeepSeek | `opencode-go/deepseek-v4.1-flash` | `openrouter/deepseek/deepseek-v4.1-flash` |
 
-These IDs are pinned for reproducibility. If one no longer resolves, skip that
-panelist and note it in the ledger — do not silently swap to a different model
-without the user's explicit approval. `opencode models | grep openrouter` lists
-what is registered; `curl -s https://openrouter.ai/api/v1/models` lists what
-exists; opencode rejects models not in config, so a newly approved id must be
-registered in `~/.config/opencode/opencode.jsonc` first.
+Run every seat on its primary. Retry that seat ONCE on its fallback when the
+primary fails before returning a result block for a provider reason: quota or
+usage limit exhausted, rate limit (429), auth failure, `ProviderModelNotFoundError`,
+or a provider/5xx error in `results/<name>.err`. Keep the failed attempt's stderr
+as `results/<name>.go.err` before retrying so the cause stays auditable. Do NOT
+fall back on a timeout or on a block the judge merely dislikes — a timeout is a
+`SKIPPED (TIMEOUT)` as usual. If the fallback also fails, skip the seat.
 
-Auth: OpenRouter must be logged in (`opencode auth list` shows it). If opencode or
-its OpenRouter auth is missing, skip that panelist and note it; do not fail the run.
+Record the provider each seat actually ran on in `LEDGER.md` and in the roll-call
+Status column (`returned (OpenRouter fallback: quota)`). The fallback is the same
+model family on a different host, which is permitted; substituting a DIFFERENT
+model (e.g. Kimi → a non-Kimi model, or a different size tier) is still forbidden
+without the user's explicit approval. If OpenCode Go is exhausted for one seat,
+expect it for the others in the same run — fall back each one individually, but
+you may go straight to OpenRouter for the remaining seats and say so in the ledger.
+
+These IDs are pinned for reproducibility. `opencode models | grep -E
+'^(opencode-go|openrouter)/'` lists what opencode will accept; `curl -s
+https://openrouter.ai/api/v1/models` lists what OpenRouter serves. OpenCode Go
+models ship in opencode's catalog; the OpenRouter fallbacks must be registered in
+`~/.config/opencode/opencode.jsonc` under `provider.openrouter.models` because the
+cached catalog can lag OpenRouter's live one.
+
+Auth: `opencode auth list` must show OpenCode Go (primary) and OpenRouter
+(fallback). With only one of them, run every seat on that one and note it; with
+neither, skip the opencode seats and note it. Do not fail the run.
 
 Invocation — attach the packet with `--file=` (prompt read as file data, not
 spliced into the shell). The message positional MUST come before `--file`, which
@@ -486,20 +502,21 @@ main `.fusion/runs/<ts>/`:
 ```sh
 # read-only (plan/review) — `--agent plan` is a hard guard (cannot edit files)
 opencode run "Read the attached prompt. Return exactly one Fusion result block." \
-  --agent plan --model openrouter/moonshotai/kimi-k3 \
+  --agent plan --model opencode-go/kimi-k3.1-pro \
   --file=<run-dir>/prompts/kimi.md < /dev/null \
   > <run-dir>/results/kimi.md 2> <run-dir>/results/kimi.err
 
 # Execute Parallel writer — edits its own worktree, result to the MAIN run dir
 opencode run "Read the attached prompt. Implement only in this worktree. Return exactly one Fusion result block." \
-  --dir <worktree> --model openrouter/z-ai/glm-5.2 \
+  --dir <worktree> --model opencode-go/glm-5.3 \
   --file=<run-dir>/prompts/glm.md < /dev/null \
   > <run-dir>/results/glm.md 2> <run-dir>/results/glm.err
 ```
 
-Swap model, prompt file, and output path per panelist. If opencode prints a
-`ProviderModelNotFoundError` or other error instead of a result block, record a
-skipped panelist; do not invent a block.
+Swap model, prompt file, and output path per panelist; for a fallback, swap only
+`--model` to the seat's OpenRouter id. If opencode prints an error instead of a
+result block and the fallback rule above does not apply (or the fallback also
+failed), record a skipped panelist; do not invent a block.
 
 ## Consensus Rounds
 

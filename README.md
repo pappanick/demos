@@ -21,7 +21,7 @@ Then install whichever demo you want:
 
 | Plugin | What it does |
 | --- | --- |
-| [`fusion/`](fusion/) | A local multi-model panel. One model judges; Claude Opus, Claude Fable, Antigravity, Codex, Kimi, GLM, and Qwen act as panelists for planning, review, and parallel execution. |
+| [`fusion/`](fusion/) | A local multi-model panel. One model judges; Claude Opus, Antigravity, Codex, Kimi, GLM, Qwen, and DeepSeek act as panelists for planning, review, and parallel execution. |
 
 Fusion runs with nothing but Claude Code installed, though a Claude-only panel is
 a degraded one by the skill's own quorum rules — install one external CLI and the

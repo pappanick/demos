@@ -1,21 +1,25 @@
-// Merge into ~/.config/opencode/opencode.jsonc — opencode rejects any model that
-// is not registered here, so the Kimi, GLM, and Qwen seats need these three entries.
-// (opencode's cached catalog may lag OpenRouter's live one, so a brand-new model
-// like qwen3.8-max must be registered explicitly even though the API serves it.)
+// Merge into ~/.config/opencode/opencode.jsonc — these are the OpenRouter FALLBACK
+// models for the Kimi, GLM, Qwen, and DeepSeek seats. The primaries run on the
+// OpenCode Go subscription (opencode-go/*), which ships in opencode's catalog and
+// needs no registration. OpenRouter entries must be registered explicitly because
+// opencode's cached catalog may lag OpenRouter's live one.
 // Model IDs are pinned to match fusion/skills/fusion/SKILL.md; CI asserts they agree.
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
     "openrouter": {
       "models": {
-        "moonshotai/kimi-k3": {
-          "name": "Kimi K3 (OpenRouter)"
+        "moonshotai/kimi-k3.1-pro": {
+          "name": "Kimi K3.1 Pro (OpenRouter)"
         },
-        "z-ai/glm-5.2": {
-          "name": "GLM 5.2 (OpenRouter)"
+        "z-ai/glm-5.3": {
+          "name": "GLM 5.3 (OpenRouter)"
         },
-        "qwen/qwen3.8-max": {
-          "name": "Qwen3.8 Max (OpenRouter)"
+        "qwen/qwen3.8-max-0902": {
+          "name": "Qwen3.8 Max 0902 (OpenRouter)"
+        },
+        "deepseek/deepseek-v4.1-flash": {
+          "name": "DeepSeek V4.1 Flash (OpenRouter)"
         }
       }
     }

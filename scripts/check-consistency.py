@@ -34,11 +34,19 @@ SKILL = ROOT / "fusion" / "skills" / "fusion" / "SKILL.md"
 OPENCODE = ROOT / "fusion" / "opencode" / "opencode.jsonc"
 PLUGIN_README = ROOT / "fusion" / "README.md"
 
-REQUIRED_AGENTS = ("fusion-opus-panelist", "fusion-fable-panelist")
+REQUIRED_AGENTS = ("fusion-opus-panelist",)
+
+# Seats retired to fusion/archive/. They must exist there (so they can be
+# restored) and must NOT be under agents/, where the plugin would load them.
+ARCHIVED_AGENTS = ("fusion-fable-panelist",)
 
 # `openrouter/vendor/model`. The generic placeholder `openrouter/<id>` has no
 # inner slash and no word characters in `<id>`, so it is correctly ignored.
 MODEL_RE = re.compile(r"openrouter/([\w.-]+/[\w.-]+)")
+
+# Primary seats run on the OpenCode Go subscription. These need no registration,
+# but every one must be named in the README so users know what they are paying for.
+GO_MODEL_RE = re.compile(r"opencode-go/([\w.-]+)")
 
 # The first ```jsonc fence in the README is the block users merge.
 JSONC_FENCE_RE = re.compile(r"```jsonc\n(.*?)```", re.DOTALL)
@@ -133,6 +141,16 @@ def main():
             f"names it, so shipping without it yields a seat that cannot start",
         )
 
+    for agent in ARCHIVED_AGENTS:
+        check(
+            (plugin_dir / "archive" / f"{agent}.md").exists(),
+            f"archived agent fusion/archive/{agent}.md is missing — it cannot be restored",
+        )
+        check(
+            not (plugin_dir / "agents" / f"{agent}.md").exists(),
+            f"archived agent {agent} is also under fusion/agents/ — the plugin would load it",
+        )
+
     # --- every model the skill invokes is registered in every place ---
     skill_models = set(MODEL_RE.findall(skill_text))
     check(skill_models, "no openrouter model IDs found in SKILL.md — regex stale?")
@@ -152,6 +170,15 @@ def main():
     for model in sorted(skill_models):
         check(model in readme_text,
               f"fusion/README.md never mentions {model}")
+
+    go_models = set(GO_MODEL_RE.findall(skill_text))
+    check(go_models, "no opencode-go model IDs found in SKILL.md — regex stale?")
+    check(len(go_models) == len(skill_models),
+          f"SKILL.md has {len(go_models)} OpenCode Go primaries but "
+          f"{len(skill_models)} OpenRouter fallbacks — every opencode seat needs both")
+    for model in sorted(go_models):
+        check(model in readme_text,
+              f"fusion/README.md never mentions OpenCode Go model {model}")
 
     return report(skill_models)
 

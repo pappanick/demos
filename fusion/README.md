@@ -6,11 +6,11 @@ results, instead of trusting one model alone. You are the **judge**; the panel i
 | Panelist | How it runs |
 | --- | --- |
 | Claude Opus (`fusion-opus-panelist`) | Claude Code subagent |
-| Antigravity | `agy` CLI |
-| Codex | `codex` CLI |
+| Antigravity (`Gemini 4 Argon (High)`) | `agy` CLI |
+| Codex (`gpt-5.6-sol`) | `codex` CLI |
 | Kimi (`kimi-k3.1-pro`) | `opencode run` → OpenCode Go, fallback OpenRouter `moonshotai/kimi-k3.1-pro` |
 | GLM (`glm-5.3`) | `opencode run` → OpenCode Go, fallback OpenRouter `z-ai/glm-5.3` |
-| Qwen (`qwen3.8-max`) | `opencode run` → OpenCode Go, fallback OpenRouter `qwen/qwen3.8-max-0902` |
+| Qwen (`qwen3.8-max`) | `opencode run` → OpenCode Go, fallback OpenRouter `qwen/qwen3.8-max-prime` |
 | DeepSeek (`deepseek-v4.1-flash`) | `opencode run` → OpenCode Go, fallback OpenRouter `deepseek/deepseek-v4.1-flash` |
 
 Antigravity, Codex, Kimi, GLM, Qwen, and DeepSeek are all agentic CLIs with local
@@ -83,7 +83,7 @@ your `~/.config/opencode/opencode.jsonc`:
       "models": {
         "moonshotai/kimi-k3.1-pro":     { "name": "Kimi K3.1 Pro (OpenRouter)" },
         "z-ai/glm-5.3":                 { "name": "GLM 5.3 (OpenRouter)" },
-        "qwen/qwen3.8-max-0902":        { "name": "Qwen3.8 Max 0902 (OpenRouter)" },
+        "qwen/qwen3.8-max-prime":       { "name": "Qwen3.8 Max Prime (OpenRouter)" },
         "deepseek/deepseek-v4.1-flash": { "name": "DeepSeek V4.1 Flash (OpenRouter)" }
       }
     }

@@ -15,8 +15,8 @@
         "z-ai/glm-5.3": {
           "name": "GLM 5.3 (OpenRouter)"
         },
-        "qwen/qwen3.8-max-0902": {
-          "name": "Qwen3.8 Max 0902 (OpenRouter)"
+        "qwen/qwen3.8-max-prime": {
+          "name": "Qwen3.8 Max Prime (OpenRouter)"
         },
         "deepseek/deepseek-v4.1-flash": {
           "name": "DeepSeek V4.1 Flash (OpenRouter)"

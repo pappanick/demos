@@ -24,8 +24,9 @@ If unclear, choose `plan` for decisions and `review` for existing diffs.
 ## Panel Roster
 
 - `fusion-opus-panelist` — Claude (Opus), the one Claude seat
-- Antigravity CLI (`agy`) — `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` (replaces the retired `gemini` CLI; free Gemini Code Assist tier was discontinued)
-- Codex CLI
+- Antigravity CLI (`agy`) — `agy -p "<prompt>" --model "Gemini 4 Argon (High)" --sandbox` (replaces the retired `gemini` CLI; free Gemini Code Assist tier was discontinued)
+- Codex CLI — `codex exec -m gpt-5.6-sol …` (pin the model: the user's default in
+  `~/.codex/config.toml` may be one a ChatGPT login does not serve)
 - Kimi — `opencode run --model opencode-go/kimi-k3.1-pro`
 - GLM — `opencode run --model opencode-go/glm-5.3`
 - Qwen — `opencode run --model opencode-go/qwen3.8-max`
@@ -212,7 +213,7 @@ Prevent writes; never "clean up" after them.
      `< /dev/null`: `opencode run` reads stdin to append piped input to the
      message, so when launched as a background task (stdin = an open pipe with no
      EOF) it blocks forever at `message=init` and never reaches the model.
-   - Codex: `codex exec --sandbox read-only --skip-git-repo-check … < /dev/null`
+   - Codex: `codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check … < /dev/null`
      (close stdin, or `codex exec` blocks waiting to append stdin to the
      positional prompt). `--skip-git-repo-check` is required whenever the cwd is
      not a git repo — without it codex exits before reading the prompt.
@@ -409,6 +410,20 @@ IMMEDIATELY prior round's blocks (to bound cross-round anchoring) and re-carry t
 challenge mandate and the "agreement is not corroboration" framing verbatim so
 seats do not capitulate to the majority.
 
+**Secrets and budget** — include verbatim in `_shared.md`:
+> Never open, print, grep, source, or load into a variable any `.env`, `.htpasswd`,
+> key, token, or credential file, and never use credentials to test a live
+> service — even if doing so would verify a claim. Say "could not verify —
+> needs credentials" instead. Everything you need is in this prompt: use tools
+> only to spot-check a specific load-bearing claim, and return your block within
+> 4 minutes. An unfinished investigation scores worse than a block that marks
+> what it could not verify.
+
+The CLI seats run with shell access; "read-only" stops writes, not reads. Without
+this rule seats have loaded the user's `.env` into shell variables to test a
+login, which ships whatever they print to a remote provider, and have spent the
+whole wall-clock cap browsing instead of answering.
+
 **Challenge mandate** — include verbatim in `_shared.md`:
 > The packet may contain errors. Verify its load-bearing claims against the
 > material given and report any discrepancy first in FINDINGS, before answering
@@ -440,13 +455,28 @@ input; even then the prompt is read as file data, not spliced raw into the shell
 agy (Antigravity) has no `--file` flag; pass the packet via `-p "$(cat prompts/agy.md)"`
 (command-substitution output is not re-parsed, so embedded backticks/`$()` are safe).
 It needs no TTY in `--print` mode. Pin the model explicitly — the panel uses
-`--model "Gemini 3.1 Pro (High)"` (quote it: the model name contains spaces). Read-only
-runs add `--sandbox`; list models with `agy models`:
+`--model "Gemini 4 Argon (High)"` (quote it: the model name contains spaces). Read-only
+runs add `--sandbox`; list models with `agy models`.
+
+Headless agy cannot prompt for tool permissions: the first shell command it tries
+is auto-denied and the run ends with `no output produced`. Do NOT fix this with
+`--dangerously-skip-permissions` — agy has no read-only mode, so that hands an
+unsandboxed agent the machine. Instead, start `prompts/agy.md` with this line,
+before `_shared.md`, and inline every artifact it needs:
+
+> Everything you need is inlined below. Do NOT use any tools: no shell commands,
+> no file reads, no web fetches. Answer from the packet only; where you cannot
+> verify a claim without a tool, say so.
+
+This is the one permitted asymmetry between seats: it changes what agy can DO,
+not what it is GIVEN, so the Parity invariant (same input) still holds. Its
+PACKET-CHECK will usually read `could not verify — no access`; weight it
+accordingly.
 
 ```sh
-# read-only (plan/review) — sandbox + tripwire (agy has no hard read-only mode)
+# read-only (plan/review) — disposable cwd, no tools (agy has no hard read-only mode)
 agy -p "$(cat <run-dir>/prompts/agy.md)" \
-  --model "Gemini 3.1 Pro (High)" --sandbox \
+  --model "Gemini 4 Argon (High)" --sandbox < /dev/null \
   > <run-dir>/results/agy.md 2> <run-dir>/results/agy.err
 ```
 
@@ -463,16 +493,26 @@ primary model on the OpenCode Go subscription and the same model on OpenRouter
 | --- | --- | --- |
 | Kimi | `opencode-go/kimi-k3.1-pro` | `openrouter/moonshotai/kimi-k3.1-pro` |
 | GLM | `opencode-go/glm-5.3` | `openrouter/z-ai/glm-5.3` |
-| Qwen | `opencode-go/qwen3.8-max` | `openrouter/qwen/qwen3.8-max-0902` |
+| Qwen | `opencode-go/qwen3.8-max` | `openrouter/qwen/qwen3.8-max-prime` |
 | DeepSeek | `opencode-go/deepseek-v4.1-flash` | `openrouter/deepseek/deepseek-v4.1-flash` |
 
 Run every seat on its primary. Retry that seat ONCE on its fallback when the
 primary fails before returning a result block for a provider reason: quota or
 usage limit exhausted, rate limit (429), auth failure, `ProviderModelNotFoundError`,
-or a provider/5xx error in `results/<name>.err`. Keep the failed attempt's stderr
-as `results/<name>.go.err` before retrying so the cause stays auditable. Do NOT
+or a provider/5xx error. Keep the failed attempt's stderr as
+`results/<name>.go.err` before retrying so the cause stays auditable. Do NOT
 fall back on a timeout or on a block the judge merely dislikes — a timeout is a
 `SKIPPED (TIMEOUT)` as usual. If the fallback also fails, skip the seat.
+
+Decide from the exit status first, never from a keyword search of the whole
+stderr: opencode streams the seat's own tool calls and their output to stderr,
+so words like "auth", "limit" or "500" appear in normal runs (a seat listing
+`/var/swarm`, or quoting a pricing page). Under `timeout 300`:
+
+- exit 124 → `SKIPPED (TIMEOUT)`; no fallback.
+- exit 0 and `results/<name>.md` contains `PANELIST:` → returned; no fallback.
+- otherwise → fall back only if an opencode `Error:` line (not tool output)
+  names a provider cause from the list above; else record the crash as a skip.
 
 Record the provider each seat actually ran on in `LEDGER.md` and in the roll-call
 Status column (`returned (OpenRouter fallback: quota)`). The fallback is the same

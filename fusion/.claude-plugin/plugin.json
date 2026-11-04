@@ -1,7 +1,6 @@
 {
   "name": "fusion",
   "description": "A local multi-model panel for Claude Code: plan, review, and execute with a panel of models and one judge.",
-  "version": "1.0.0",
   "author": {
     "name": "Nikos Pappas"
   },

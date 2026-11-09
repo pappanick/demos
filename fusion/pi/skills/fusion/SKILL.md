@@ -20,9 +20,8 @@ pi, expect `openrouter/deepseek/deepseek-v4.1-flash-1017`; check `PI_MODEL` and
 `PI_PROVIDER` and, if it differs, say so once before continuing. On DSH the
 active agent model is whatever the profile sets, which is fine.
 
-The user text after the skill invocation is the task (`/skill:fusion` in pi; in
-DSH, invoke the skill by name or just ask for a fusion run). Determine mode from
-the prefix:
+The user text after the skill invocation is the task (`/skill:fusion` in pi,
+`/fusion` from the `/` menu in DSH). Determine mode from the prefix:
 
 - `plan:` read-only architecture/task planning
 - `review:` read-only harsh review of current code/diff

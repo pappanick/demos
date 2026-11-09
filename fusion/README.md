@@ -59,9 +59,10 @@ DSH consumes the same variant (`fusion/dsh/skills/fusion` is a symlink to it).
 Install with `./install.sh --harness dsh` to link it into `~/.dsh/skills/fusion`
 (override with `DSH_HOME`). DSH scans that root natively — it also reads
 `~/.agents/skills`, `<repo>/.dsh/skills`, and `<repo>/.agents/skills`, and watches
-them live — so no cordis patch or profile edit is involved. The skill is picked by
-its `description`; there is no `/skill:` command in DSH, just ask for a fusion run
-or name the skill.
+them live — so no cordis patch or profile edit is involved. Because the variant
+sets `disable-model-invocation: true`, DSH lists it as user-only: you invoke it by
+typing `/fusion` (or picking it from the `/` menu), and the model will not select
+it on its own. DSH's skill entry path is `/name`, not pi's `/skill:name`.
 
 Note that the four opencode seats shell out to the `pi` CLI: on a box with DSH but
 no `pi`, they degrade to skips (agy and codex still run). That is a property of

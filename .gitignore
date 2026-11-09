@@ -1,3 +1,4 @@
 .DS_Store
 .fusion/
 .remember/
+__pycache__/

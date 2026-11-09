@@ -1,4 +1,4 @@
-# Fusion — a local multi-model panel for Claude Code
+# Fusion — a local multi-model panel
 
 `/fusion:fusion` runs your task past a panel of models and adjudicates the
 results, instead of trusting one model alone. You are the **judge**; the panel is:
@@ -38,6 +38,29 @@ Since this repo holds several demos, you can check out only what Fusion needs:
 ```
 /plugin marketplace add pappanick/demos --sparse .claude-plugin fusion
 ```
+
+### pi
+
+The pi port is a sibling variant under `pi/`: pi itself is the judge and drives
+the panelists as `pi` headless seats through `scripts/seat.sh`, so there is no
+Claude subagent seat. Install it with:
+
+```
+git clone git@github.com:pappanick/demos.git ~/demos
+~/demos/install.sh --harness pi
+```
+
+That links `fusion/pi/skills/fusion` into `~/.pi/agent/skills/fusion` (override
+with `PI_CODING_AGENT_DIR`). Re-run it after a `git pull`; it is idempotent. Pi
+then exposes the skill as `/skill:fusion`, and the variant ships with the
+provider fallback extension assumed by its seat script.
+
+### Codex
+
+No Codex variant yet — `fusion/codex/` does not exist, so `install.sh` installs
+nothing for it. When it lands, it is one directory plus a `codex)` case in the
+installer, and CI (`scripts/check-consistency.py`) will enforce that its seat
+models match the Claude and pi variants.
 
 ### What you get with nothing else installed
 
@@ -133,7 +156,9 @@ consensus:
 ```
 fusion/
 ├── .claude-plugin/plugin.json          # plugin manifest
-├── skills/fusion/SKILL.md              # the protocol (judge instructions)
+├── skills/fusion/SKILL.md              # Claude Code protocol (judge instructions)
+├── pi/skills/fusion/SKILL.md           # pi protocol variant (pi is the judge)
+├── pi/skills/fusion/scripts/           # seat.sh (one seat), panel.sh (whole panel)
 ├── agents/fusion-opus-panelist.md      # Claude Opus seat
 ├── archive/fusion-fable-panelist.md    # Claude Fable 5 seat (archived, not loaded)
 └── opencode/opencode.jsonc             # OpenRouter fallback registration (opt-in)

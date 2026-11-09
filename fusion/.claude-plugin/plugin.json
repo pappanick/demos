@@ -1,6 +1,6 @@
 {
   "name": "fusion",
-  "description": "A local multi-model panel for Claude Code: plan, review, and execute with a panel of models and one judge.",
+  "description": "A local multi-model panel: plan, review, and execute with a panel of models and one judge.",
   "author": {
     "name": "Nikos Pappas"
   },
@@ -13,6 +13,7 @@
     "planning",
     "multi-model",
     "adjudication",
-    "consensus"
+    "consensus",
+    "pi"
   ]
 }

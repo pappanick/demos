@@ -23,6 +23,7 @@ Run: python3 scripts/check-consistency.py
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -33,6 +34,34 @@ PLUGIN = ROOT / "fusion" / ".claude-plugin" / "plugin.json"
 SKILL = ROOT / "fusion" / "skills" / "fusion" / "SKILL.md"
 OPENCODE = ROOT / "fusion" / "opencode" / "opencode.jsonc"
 PLUGIN_README = ROOT / "fusion" / "README.md"
+
+# The pi port is a second authored variant of the same skill (the harnesses drive
+# panelists differently, so the prose cannot be shared). The model IDs and the
+# scripts the instructions invoke must still agree with the Claude variant.
+PI_SKILL = ROOT / "fusion" / "pi" / "skills" / "fusion" / "SKILL.md"
+PI_SCRIPTS = ROOT / "fusion" / "pi" / "skills" / "fusion" / "scripts"
+PI_SCRIPT_FILES = ("seat.sh", "panel.sh")
+INSTALLER = ROOT / "install.sh"
+# Harnesses install.sh knows how to link into. Adding <plugin>/<harness>/skills/
+# without teaching the installer about the harness silently ships dead weight.
+KNOWN_HARNESSES = ("pi", "codex")
+FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+NAME_RE = re.compile(r"^name:\s*(\S+)\s*$", re.MULTILINE)
+ROSTER_RE = re.compile(r"^## Panel Roster\n(.*?)(?=^## )", re.DOTALL | re.MULTILINE)
+
+
+def roster_seat_models(text):
+    """Model IDs from the seat table only.
+
+    Whole-file extraction is wrong for the pi variant: its preamble names the
+    judge model (`openrouter/deepseek/deepseek-v4.1-flash-1017`), which is a
+    local preference, not a panelist registration.
+    """
+    section = ROSTER_RE.search(text)
+    if not section:
+        return set(), set()
+    return (set(MODEL_RE.findall(section.group(1))),
+            set(GO_MODEL_RE.findall(section.group(1))))
 
 REQUIRED_AGENTS = ("fusion-opus-panelist",)
 
@@ -180,19 +209,67 @@ def main():
         check(model in readme_text,
               f"fusion/README.md never mentions OpenCode Go model {model}")
 
-    return report(skill_models)
+    # --- the pi port agrees with the Claude variant ---
+    check(PI_SKILL.exists(),
+          "missing fusion/pi/skills/fusion/SKILL.md — the pi harness would have no skill")
+    if PI_SKILL.exists():
+        pi_text = PI_SKILL.read_text()
+        front = FRONTMATTER_RE.match(pi_text)
+        check(front, "pi SKILL.md has no YAML frontmatter — pi will not load it")
+        declared = NAME_RE.search(front.group(1)) if front else None
+        check(declared and declared.group(1) == "fusion",
+              "pi SKILL.md must declare `name: fusion`, matching its directory")
+        check("description:" in (front.group(1) if front else ""),
+              "pi SKILL.md has no description — pi will not advertise it")
+        pi_models, pi_go_models = roster_seat_models(pi_text)
+        check(pi_models, "pi SKILL.md has no seat table model IDs — roster regex stale?")
+        compare(skill_models, pi_models, "pi SKILL.md roster (openrouter fallbacks)")
+        compare(go_models, pi_go_models, "pi SKILL.md roster (OpenCode Go primaries)")
+        check("scripts/seat.sh" in pi_text and "scripts/panel.sh" in pi_text,
+              "pi SKILL.md does not reference scripts/seat.sh and scripts/panel.sh")
+
+    for name in PI_SCRIPT_FILES:
+        script = PI_SCRIPTS / name
+        check(script.exists(),
+              f"missing fusion/pi/skills/fusion/scripts/{name} — the pi SKILL.md invokes it")
+        check(script.exists() and os.access(script, os.X_OK),
+              f"fusion/pi/skills/fusion/scripts/{name} is not executable")
+
+    # --- installer covers every harness directory that ships skills ---
+    check(INSTALLER.exists(), "missing install.sh — other harnesses cannot install skills")
+    check(INSTALLER.exists() and os.access(INSTALLER, os.X_OK),
+          "install.sh is not executable")
+    if INSTALLER.exists():
+        installer_text = INSTALLER.read_text()
+        for harness in KNOWN_HARNESSES:
+            check(re.search(rf"^\s*{harness}\)", installer_text, re.MULTILINE),
+                  f"install.sh has no skills_dir_for case for harness {harness!r}")
+
+    shopt = sorted(
+        p.relative_to(ROOT / "fusion").parts[0]
+        for p in (ROOT / "fusion").glob("*/skills/*/SKILL.md")
+    )
+    for harness in shopt:
+        check(harness in KNOWN_HARNESSES,
+              f"fusion/{harness}/skills/ ships a skill but {harness!r} is not a known "
+              f"harness — add it to install.sh and KNOWN_HARNESSES")
+
+    return report(skill_models, go_models)
 
 
-def report(models=()):
+def report(models=(), go_models=()):
     if failures:
         print(f"FAIL — {len(failures)} consistency problem(s):", file=sys.stderr)
         for f in failures:
             print(f"  - {f}", file=sys.stderr)
         return 1
     print(f"OK — manifests agree; {len(models)} model ID(s) consistent across "
-          f"SKILL.md, opencode.jsonc, and both README sites")
+          f"both SKILL.md variants, opencode.jsonc, and both README sites; "
+          f"pi scripts and install.sh present")
     for m in sorted(models):
         print(f"  openrouter/{m}")
+    for m in sorted(go_models):
+        print(f"  opencode-go/{m}")
     return 0
 
 

@@ -9,6 +9,7 @@
 # Example:
 #   fusion/skills/fusion/                   -> Claude Code (plugin marketplace)
 #   fusion/pi/skills/fusion/                -> $PI_CODING_AGENT_DIR/skills/fusion
+#   fusion/dsh/skills/fusion/               -> $DSH_HOME/skills/fusion (DeepSeek Harness)
 #   fusion/codex/skills/fusion/             -> $CODEX_HOME/skills/fusion
 #
 # Usage:
@@ -27,6 +28,7 @@
 #   DEMOS_REPO      repo root (default: directory containing this script)
 #   PI_CODING_AGENT_DIR   pi config dir (default: ~/.pi/agent)
 #   CODEX_HOME      codex config dir (default: ~/.codex)
+#   DSH_HOME        DeepSeek Harness config dir (default: ~/.dsh)
 #
 # Nothing outside this repo and the target harness skill dirs is touched.
 set -uo pipefail
@@ -71,6 +73,7 @@ skills_dir_for() {
   case $1 in
     pi)    printf '%s/skills\n' "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}" ;;
     codex) printf '%s/skills\n' "${CODEX_HOME:-$HOME/.codex}" ;;
+    dsh)   printf '%s/skills\n' "${DSH_HOME:-$HOME/.dsh}" ;;
     *)     return 1 ;;
   esac
 }
@@ -108,8 +111,8 @@ for manifest in "${srcs[@]}"; do
   harness_wanted "$harness" || continue
   found=1
 
-  # Do not plant ~/.codex or ~/.pi on a box that never ran that harness. An
-  # explicit --harness overrides this (that is how a fresh box gets bootstrapped).
+  # Do not plant ~/.codex, ~/.pi, or ~/.dsh on a box that never ran that
+  # harness. An explicit --harness overrides this (fresh-box bootstrap).
   if [ ${#harnesses[@]} -eq 0 ] && [ ! -d "$(dirname "$target_dir")" ]; then
     say "skip $harness/$skill: $(dirname "$target_dir") not present (--harness $harness to force)"
     continue

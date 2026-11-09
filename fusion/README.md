@@ -39,21 +39,33 @@ Since this repo holds several demos, you can check out only what Fusion needs:
 /plugin marketplace add pappanick/demos --sparse .claude-plugin fusion
 ```
 
-### pi
+### pi and DSH (DeepSeek Harness)
 
-The pi port is a sibling variant under `pi/`: pi itself is the judge and drives
-the panelists as `pi` headless seats through `scripts/seat.sh`, so there is no
-Claude subagent seat. Install it with:
+The pi port is a sibling variant under `pi/`: the host agent is the judge and
+drives the panelists as `pi` headless seats through `scripts/seat.sh`, so there is
+no Claude subagent seat. Install it with:
 
 ```
 git clone git@github.com:pappanick/demos.git ~/demos
-~/demos/install.sh --harness pi
+~/demos/install.sh --harness pi    # or --harness dsh
 ```
 
 That links `fusion/pi/skills/fusion` into `~/.pi/agent/skills/fusion` (override
 with `PI_CODING_AGENT_DIR`). Re-run it after a `git pull`; it is idempotent. Pi
 then exposes the skill as `/skill:fusion`, and the variant ships with the
 provider fallback extension assumed by its seat script.
+
+DSH consumes the same variant (`fusion/dsh/skills/fusion` is a symlink to it).
+Install with `./install.sh --harness dsh` to link it into `~/.dsh/skills/fusion`
+(override with `DSH_HOME`). DSH scans that root natively — it also reads
+`~/.agents/skills`, `<repo>/.dsh/skills`, and `<repo>/.agents/skills`, and watches
+them live — so no cordis patch or profile edit is involved. The skill is picked by
+its `description`; there is no `/skill:` command in DSH, just ask for a fusion run
+or name the skill.
+
+Note that the four opencode seats shell out to the `pi` CLI: on a box with DSH but
+no `pi`, they degrade to skips (agy and codex still run). That is a property of
+the shared seat script, not of DSH.
 
 ### Codex
 
@@ -159,6 +171,7 @@ fusion/
 ├── skills/fusion/SKILL.md              # Claude Code protocol (judge instructions)
 ├── pi/skills/fusion/SKILL.md           # pi protocol variant (pi is the judge)
 ├── pi/skills/fusion/scripts/           # seat.sh (one seat), panel.sh (whole panel)
+├── dsh/skills/fusion                   # symlink: DSH reads the pi variant
 ├── agents/fusion-opus-panelist.md      # Claude Opus seat
 ├── archive/fusion-fable-panelist.md    # Claude Fable 5 seat (archived, not loaded)
 └── opencode/opencode.jsonc             # OpenRouter fallback registration (opt-in)

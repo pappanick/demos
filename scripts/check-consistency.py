@@ -44,7 +44,7 @@ PI_SCRIPT_FILES = ("seat.sh", "panel.sh")
 INSTALLER = ROOT / "install.sh"
 # Harnesses install.sh knows how to link into. Adding <plugin>/<harness>/skills/
 # without teaching the installer about the harness silently ships dead weight.
-KNOWN_HARNESSES = ("pi", "codex")
+KNOWN_HARNESSES = ("pi", "dsh", "codex")
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 NAME_RE = re.compile(r"^name:\s*(\S+)\s*$", re.MULTILINE)
 ROSTER_RE = re.compile(r"^## Panel Roster\n(.*?)(?=^## )", re.DOTALL | re.MULTILINE)
@@ -253,6 +253,19 @@ def main():
         check(harness in KNOWN_HARNESSES,
               f"fusion/{harness}/skills/ ships a skill but {harness!r} is not a known "
               f"harness — add it to install.sh and KNOWN_HARNESSES")
+
+    # Every shipped variant must declare the name of the directory it lives in:
+    # pi and DSH both surface the skill by that name, and DSH reloads on rename.
+    for manifest in sorted((ROOT / "fusion").glob("*/skills/*/SKILL.md")):
+        skill_name = manifest.parent.name
+        text = manifest.read_text()
+        declared = NAME_RE.search(text)
+        check(declared and declared.group(1) == skill_name,
+              f"{manifest.relative_to(ROOT)} must declare `name: {skill_name}` "
+              f"matching its directory")
+        check("description:" in text.split("---")[1] if text.startswith("---") else False,
+              f"{manifest.relative_to(ROOT)} has no frontmatter description — "
+              f"harnesses will not advertise it")
 
     return report(skill_models, go_models)
 

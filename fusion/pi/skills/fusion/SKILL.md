@@ -1,13 +1,13 @@
 ---
 name: fusion
-description: "Run a local Fusion panel (Kimi, GLM, Qwen, DeepSeek on OpenCode Go with OpenRouter fallback per seat, plus Antigravity/Gemini via agy and Codex) with this pi session as judge. Does planning, harsh review, and serial or parallel execution, adjudicated by bounded evidence-gated consensus rounds. Invoked explicitly with a mode prefix."
+description: "Run a local Fusion panel (Kimi, GLM, Qwen, DeepSeek on OpenCode Go with OpenRouter fallback per seat, plus Antigravity/Gemini via agy and Codex) with this session as judge. Does planning, harsh review, and serial or parallel execution, adjudicated by bounded evidence-gated consensus rounds. Invoked explicitly with a mode prefix."
 disable-model-invocation: true
 license: MIT
 metadata:
-  harness: pi
+  harnesses: pi, dsh
 ---
 
-# Fusion Skill (pi port)
+# Fusion Skill (pi / DSH port)
 
 You are the JUDGE. In Plan and Review you are also a per-round convergence
 adjudicator: you certify whether the panel reached evidence-grounded convergence,
@@ -15,10 +15,14 @@ and otherwise run bounded rebuttal rounds. Consensus never displaces judgment â€
 you still own the final decision and the honesty about disagreement, and
 substantive judgment is retained as the round-N fallback.
 
-Judge model: this session should be running `openrouter/deepseek/deepseek-v4.1-flash-1017`.
-Check `PI_MODEL`/`PI_PROVIDER`. If not, tell the user once and continue.
+Judge model: the session's own model is the judge â€” no seat may outrank it. On
+pi, expect `openrouter/deepseek/deepseek-v4.1-flash-1017`; check `PI_MODEL` and
+`PI_PROVIDER` and, if it differs, say so once before continuing. On DSH the
+active agent model is whatever the profile sets, which is fine.
 
-The user text after `/skill:fusion` is the task. Determine mode from the prefix:
+The user text after the skill invocation is the task (`/skill:fusion` in pi; in
+DSH, invoke the skill by name or just ask for a fusion run). Determine mode from
+the prefix:
 
 - `plan:` read-only architecture/task planning
 - `review:` read-only harsh review of current code/diff

@@ -12,8 +12,10 @@
 #   fusion/codex/skills/fusion/             -> $CODEX_HOME/skills/fusion
 #
 # Usage:
-#   ./install.sh                      link every harness skill found
-#   ./install.sh --harness pi         only one harness (repeatable)
+#   ./install.sh                      link every harness skill found (skips
+#                                     harnesses whose config dir is absent)
+#   ./install.sh --harness pi         only one harness (repeatable; creates the
+#                                     config dir even if the harness is not there)
 #   ./install.sh --copy               copy instead of symlink (host w/o this clone)
 #   ./install.sh --force              replace a real directory in the way
 #   ./install.sh --uninstall          remove the links this script owns
@@ -105,6 +107,13 @@ for manifest in "${srcs[@]}"; do
   fi
   harness_wanted "$harness" || continue
   found=1
+
+  # Do not plant ~/.codex or ~/.pi on a box that never ran that harness. An
+  # explicit --harness overrides this (that is how a fresh box gets bootstrapped).
+  if [ ${#harnesses[@]} -eq 0 ] && [ ! -d "$(dirname "$target_dir")" ]; then
+    say "skip $harness/$skill: $(dirname "$target_dir") not present (--harness $harness to force)"
+    continue
+  fi
 
   target=$target_dir/$skill
 
